@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ⚠️ TEMPORARY — open access for local development only.
+    // Before this system handles real student data, lock this down:
+    // e.g. require Firebase Auth and check a custom "role" claim
+    // for teachers/admins, and restrict n8n's service account separately.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
