@@ -23,23 +23,27 @@ No test or typecheck commands exist — the project is plain JSX, no TypeScript.
 
 ```
 src/
-  main.jsx          # entrypoint
-  App.jsx           # BrowserRouter, 4 routes
-  pages/            # LiveStatus, Attendance, Students, Settings
+  main.jsx          # entrypoint (StrictMode wrapper)
+  App.jsx           # BrowserRouter, 5 routes
+  pages/            # LiveStatus, Attendance, Students, Sections, Settings
   components/       # Sidebar, StatusBadge, StudentFormModal, etc.
   lib/
     firebase.js     # Firebase init from import.meta.env.VITE_FIREBASE_*
     students.js     # Firestore read/write helpers for students collection
     attendance.js   # Firestore read helpers for attendance collection
+  assets/           # Static images (hero.png, svgs)
 ```
 
 ## Key facts
 
 - **Framework:** React 19 + Vite 8 + React Router v7 (SPA). No SSR, no state library.
-- **Styling:** Tailwind CSS v4 (`@import "tailwindcss"` in `index.css`, NOT the old `@tailwind` directives).
+- **Icons:** `lucide-react` throughout (Radio, CalendarDays, Users, Settings, etc.)
+- **Styling:** Tailwind CSS v4 (`@import "tailwindcss"` in `index.css`, NOT the old `@tailwind` directives). Custom `@theme` tokens are defined in `index.css` — use `text-board`, `bg-present-bg`, `font-display`, etc. instead of default Tailwind colors.
+- **Fonts:** 3 Google Fonts loaded from `index.html` — Fraunces (`font-display`), Inter (`font-body`), IBM Plex Mono (`font-mono`).
 - **Data layer:** Firebase Firestore via raw `onSnapshot` subscriptions (no React Query, no context).
 - **Data model:** `students/{id}` (name, section, rfidUid, currentStatus, lastTapTime, parentChannel, parentChatId) and `attendance/{autoId}` (date, studentId, status, timeIn, timeOut).
 - **n8n workflow** (separate system) writes attendance records and flips `currentStatus`. The dashboard reads both collections and writes only to `students` (CRUD).
-- **Env:** 6 `VITE_FIREBASE_*` vars → `.env` (local) or Vercel project env vars.
+- **Env:** 6 `VITE_FIREBASE_*` vars → `.env` (local, gitignored) or Vercel project env vars.
 - **Vercel deploy:** `vercel.json` rewrites all paths to `/index.html` (SPA fallback).
 - **Firestore rules** are wide-open (`allow read, write: if true`) — temporary for dev. Lock down via Firebase Auth before going live.
+- **Dev quirk:** `StrictMode` wraps the app in `main.jsx`, so `useEffect` runs twice in dev.

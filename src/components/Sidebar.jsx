@@ -1,10 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Radio, CalendarDays, Users, Settings as SettingsIcon } from "lucide-react";
+import { Radio, CalendarDays, Users, Layers, Settings as SettingsIcon } from "lucide-react";
 
 const NAV = [
   { to: "/", label: "Live Status", icon: Radio },
   { to: "/attendance", label: "Attendance", icon: CalendarDays },
   { to: "/students", label: "Students", icon: Users },
+  { to: "/sections", label: "Sections", icon: Layers },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
