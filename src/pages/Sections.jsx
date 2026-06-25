@@ -1,8 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
-import { Layers, Users2, Nfc } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Layers, Users2, ChevronRight } from "lucide-react";
 import { subscribeStudents } from "../lib/students";
-import { formatTime } from "../lib/attendance";
 import EmptyState from "../components/EmptyState";
+
+function slugify(str) {
+  return str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-");
+}
 
 export default function Sections() {
   const [students, setStudents] = useState(null);
@@ -25,7 +29,7 @@ export default function Sections() {
       if (b === "Unassigned") return -1;
       return a.localeCompare(b);
     });
-    return keys.map((name) => ({ name, students: map[name] }));
+    return keys.map((name) => ({ name, count: map[name].length }));
   }, [students]);
 
   const loading = students === null;
@@ -50,45 +54,31 @@ export default function Sections() {
       )}
 
       {!loading && students.length > 0 && (
-        <div className="space-y-6">
-          {sections.map(({ name, students: secStudents }) => (
-            <div key={name} className="rounded-xl border border-rule bg-white overflow-hidden">
-              <div className="flex items-center gap-2 px-5 py-3.5 bg-paper border-b border-rule">
-                <Layers size={16} className="text-ink-dim" />
-                <h2 className="font-display text-base font-semibold">{name}</h2>
-                <span className="ml-auto text-xs text-ink-dim font-mono">
-                  {secStudents.length} student{secStudents.length !== 1 ? "s" : ""}
-                </span>
-              </div>
-              <div className="divide-y divide-rule">
-                {secStudents.map((s) => (
-                  <div key={s.id} className="flex items-center gap-4 px-5 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate">{s.name}</p>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-ink-dim shrink-0">
-                      {s.rfidUid ? (
-                        <span className="inline-flex items-center gap-1">
-                          <Nfc size={12} /> Registered
-                        </span>
-                      ) : (
-                        <span className="text-pending">No card</span>
-                      )}
-                      <span
-                        className={`font-mono uppercase ${
-                          s.currentStatus === "IN" ? "text-present" : "text-ink-dim"
-                        }`}
-                      >
-                        {s.currentStatus === "IN" ? "In" : "Out"}
-                      </span>
-                      {s.lastTapTime && (
-                        <span className="font-mono">{formatTime(s.lastTapTime)}</span>
-                      )}
-                    </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sections.map(({ name, count }) => (
+            <Link
+              key={name}
+              to={`/sections/${slugify(name)}`}
+              className="rounded-xl border border-rule bg-white p-5 hover:border-ink-dim transition-colors group"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-board p-2.5 text-chalk">
+                    <Layers size={18} />
                   </div>
-                ))}
+                  <div>
+                    <h2 className="font-display text-base font-semibold">{name}</h2>
+                    <p className="text-xs text-ink-dim mt-0.5">
+                      {count} student{count !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight
+                  size={18}
+                  className="text-ink-dim/40 group-hover:text-ink-dim transition-colors mt-1"
+                />
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

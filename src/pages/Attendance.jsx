@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { ClipboardList } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CalendarDays, Users2, ChevronRight, Check } from "lucide-react";
 import { subscribeStudents } from "../lib/students";
-import { subscribeAttendanceForDate, todayStr, formatTime } from "../lib/attendance";
-import StatusBadge from "../components/StatusBadge";
-import StudentProfileDrawer from "../components/StudentProfileDrawer";
+import { subscribeAttendanceForDate, todayStr } from "../lib/attendance";
 import EmptyState from "../components/EmptyState";
+
+function slugify(str) {
+  return str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-");
+}
 
 export default function Attendance() {
   const [students, setStudents] = useState(null);
   const [records, setRecords] = useState(null);
   const [selectedDate, setSelectedDate] = useState(todayStr());
-  const [absenteesOnly, setAbsenteesOnly] = useState(false);
-  const [activeStudent, setActiveStudent] = useState(null);
 
   useEffect(() => {
     const unsub = subscribeStudents(setStudents, () => setStudents([]));
@@ -24,23 +25,29 @@ export default function Attendance() {
     return unsub;
   }, [selectedDate]);
 
-  const isToday = selectedDate === todayStr();
-
-  const rows = useMemo(() => {
-    if (!students || !records) return null;
-    const byStudent = new Map(records.map((r) => [r.studentId, r]));
-    return students
-      .map((s) => {
-        const rec = byStudent.get(s.id);
-        const status = rec ? rec.status : isToday ? "pending" : "no-record";
-        return { student: s, record: rec, status };
+  const sections = useMemo(() => {
+    if (!students) return null;
+    const bySection = {};
+    for (const s of students) {
+      const key = s.section?.trim() || "Unassigned";
+      if (!bySection[key]) bySection[key] = [];
+      bySection[key].push(s);
+    }
+    const byStudent = records ? new Map(records.map((r) => [r.studentId, r])) : new Map();
+    return Object.keys(bySection)
+      .sort((a, b) => {
+        if (a === "Unassigned") return 1;
+        if (b === "Unassigned") return -1;
+        return a.localeCompare(b);
       })
-      .sort((a, b) => a.student.name.localeCompare(b.student.name));
-  }, [students, records, isToday]);
+      .map((name) => {
+        const secStudents = bySection[name];
+        const present = secStudents.filter((s) => byStudent.get(s.id)?.status === "present").length;
+        return { name, count: secStudents.length, present };
+      });
+  }, [students, records]);
 
-  const loading = rows === null;
-  const visibleRows = rows ? (absenteesOnly ? rows.filter((r) => r.status === "absent") : rows) : [];
-  const absentCount = rows ? rows.filter((r) => r.status === "absent").length : 0;
+  const loading = students === null || records === null;
 
   return (
     <div className="max-w-5xl">
@@ -52,89 +59,72 @@ export default function Attendance() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <input
-            type="date"
-            value={selectedDate}
-            max={todayStr()}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-rule text-sm bg-white"
-          />
-          <label className="flex items-center gap-2 text-sm text-ink-dim select-none cursor-pointer">
-            <input
-              type="checkbox"
-              checked={absenteesOnly}
-              onChange={(e) => setAbsenteesOnly(e.target.checked)}
-              className="accent-board"
-            />
-            Show absentees only
-          </label>
-        </div>
+        <input
+          type="date"
+          value={selectedDate}
+          max={todayStr()}
+          onChange={(e) => setSelectedDate(e.target.value)}
+          className="px-3 py-2 rounded-lg border border-rule text-sm bg-white"
+        />
       </header>
-
-      {!loading && students.length > 0 && (
-        <p className="text-sm text-ink-dim mb-4">
-          <span className="font-mono text-absent font-medium">{absentCount}</span> absent of{" "}
-          <span className="font-mono font-medium">{students.length}</span> students on this date
-        </p>
-      )}
 
       {loading && <p className="text-sm text-ink-dim">Loading…</p>}
 
       {!loading && students.length === 0 && (
         <EmptyState
-          icon={ClipboardList}
+          icon={Users2}
           title="No students to show attendance for"
           hint="Add students from the Students page first."
         />
       )}
 
-      {!loading && students.length > 0 && visibleRows.length === 0 && (
+      {!loading && students.length > 0 && sections.length === 0 && (
         <EmptyState
-          icon={ClipboardList}
-          title="No absentees on this date"
-          hint="Nice — everyone was accounted for."
+          icon={CalendarDays}
+          title="No sections found"
+          hint="Students must have a section assigned to appear here."
         />
       )}
 
-      {!loading && visibleRows.length > 0 && (
-        <div className="rounded-xl border border-rule overflow-hidden bg-white">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-paper text-left text-xs uppercase tracking-wide text-ink-dim border-b border-rule">
-                <th className="px-5 py-3 font-medium">Name</th>
-                <th className="px-5 py-3 font-medium">Section</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium">Time in</th>
-                <th className="px-5 py-3 font-medium">Time out</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map(({ student, record, status }) => (
-                <tr
-                  key={student.id}
-                  onClick={() => setActiveStudent(student)}
-                  className="border-b border-rule last:border-0 hover:bg-paper/70 cursor-pointer"
-                >
-                  <td className="px-5 py-3 font-medium">{student.name}</td>
-                  <td className="px-5 py-3 text-ink-dim">{student.section || "—"}</td>
-                  <td className="px-5 py-3">
-                    <StatusBadge status={status} compact />
-                  </td>
-                  <td className="px-5 py-3 font-mono text-ink-dim">
-                    {formatTime(record?.timeIn)}
-                  </td>
-                  <td className="px-5 py-3 font-mono text-ink-dim">
-                    {formatTime(record?.timeOut)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!loading && students.length > 0 && sections.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sections.map(({ name, count, present }) => (
+            <Link
+              key={name}
+              to={`/attendance/${slugify(name)}`}
+              className="rounded-xl border border-rule bg-white p-5 hover:border-ink-dim transition-colors group"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-board p-2.5 text-chalk">
+                    <CalendarDays size={18} />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-base font-semibold">{name}</h2>
+                    <p className="text-xs text-ink-dim mt-0.5">
+                      {count} student{count !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight
+                  size={18}
+                  className="text-ink-dim/40 group-hover:text-ink-dim transition-colors mt-1"
+                />
+              </div>
+              <div className="mt-4 flex items-center gap-2 text-sm">
+                <span className="inline-flex items-center gap-1 font-medium text-present">
+                  <Check size={15} strokeWidth={3} />
+                  {present} present
+                </span>
+                <span className="text-ink-dim">·</span>
+                <span className="text-ink-dim">
+                  {count - present} {count - present === 1 ? "absent" : "absent"}
+                </span>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
-
-      <StudentProfileDrawer student={activeStudent} onClose={() => setActiveStudent(null)} />
     </div>
   );
 }

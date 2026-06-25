@@ -20,7 +20,10 @@ export function subscribeStudents(onChange, onError) {
   return onSnapshot(
     q,
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    onError
+    (err) => {
+      console.error("[subscribeStudents] Firestore error:", err.code, err.message);
+      onError?.(err);
+    }
   );
 }
 
@@ -48,7 +51,9 @@ export async function deleteStudent(id) {
 /** Live-subscribes to every student whose RFID card is unregistered — unused for now, kept for the enrollment flow. */
 export function subscribeUnlinkedStudents(onChange) {
   const q = query(studentsRef, where("rfidUid", "==", null));
-  return onSnapshot(q, (snap) =>
-    onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+  return onSnapshot(
+    q,
+    (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => console.error("[subscribeUnlinkedStudents] Firestore error:", err.code, err.message)
   );
 }

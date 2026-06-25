@@ -26,7 +26,7 @@ src/
   main.jsx          # entrypoint (StrictMode wrapper)
   App.jsx           # BrowserRouter, 5 routes
   pages/            # LiveStatus, Attendance, Students, Sections, Settings
-  components/       # Sidebar, StatusBadge, StudentFormModal, etc.
+  components/       # Sidebar, StatusBadge, StudentFormModal, StudentProfileDrawer, TallyMarks, EmptyState
   lib/
     firebase.js     # Firebase init from import.meta.env.VITE_FIREBASE_*
     students.js     # Firestore read/write helpers for students collection
@@ -41,7 +41,7 @@ src/
 - **Styling:** Tailwind CSS v4 (`@import "tailwindcss"` in `index.css`, NOT the old `@tailwind` directives). Custom `@theme` tokens are defined in `index.css` — use `text-board`, `bg-present-bg`, `font-display`, etc. instead of default Tailwind colors.
 - **Fonts:** 3 Google Fonts loaded from `index.html` — Fraunces (`font-display`), Inter (`font-body`), IBM Plex Mono (`font-mono`).
 - **Data layer:** Firebase Firestore via raw `onSnapshot` subscriptions (no React Query, no context).
-- **Data model:** `students/{id}` (name, section, rfidUid, currentStatus, lastTapTime, parentChannel, parentChatId) and `attendance/{autoId}` (date, studentId, status, timeIn, timeOut).
+- **Data model:** `students/{id}` (name, section, rfidUid, currentStatus, lastTapTime, parentChannel, parentChatId), `attendance/{autoId}` (date, studentId, status, timeIn, timeOut), and `settings/config` (absenceCutoffTime).
 - **n8n workflow** (separate system) writes attendance records and flips `currentStatus`. The dashboard reads both collections and writes only to `students` (CRUD).
 - **Env:** 6 `VITE_FIREBASE_*` vars → `.env` (local, gitignored) or Vercel project env vars.
 - **Vercel deploy:** `vercel.json` rewrites all paths to `/index.html` (SPA fallback).

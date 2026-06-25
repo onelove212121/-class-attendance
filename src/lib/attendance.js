@@ -9,7 +9,10 @@ export function subscribeAttendanceForDate(dateStr, onChange, onError) {
   return onSnapshot(
     q,
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    onError
+    (err) => {
+      console.error("[subscribeAttendanceForDate] Firestore error:", err.code, err.message);
+      onError?.(err);
+    }
   );
 }
 
@@ -20,11 +23,15 @@ export function subscribeAbsencesForStudent(studentId, onChange) {
     where("studentId", "==", studentId),
     where("status", "==", "absent")
   );
-  return onSnapshot(q, (snap) => {
-    const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    docs.sort((a, b) => (a.date < b.date ? 1 : -1)); // newest first
-    onChange(docs);
-  });
+  return onSnapshot(
+    q,
+    (snap) => {
+      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      docs.sort((a, b) => (a.date < b.date ? 1 : -1)); // newest first
+      onChange(docs);
+    },
+    (err) => console.error("[subscribeAbsencesForStudent] Firestore error:", err.code, err.message)
+  );
 }
 
 export function todayStr() {
