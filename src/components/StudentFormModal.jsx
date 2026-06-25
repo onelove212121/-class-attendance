@@ -7,9 +7,9 @@ const CHANNELS = [
   { value: "messenger", label: "Messenger" },
 ];
 
-export default function StudentFormModal({ initial, onSave, onClose }) {
+export default function StudentFormModal({ initial, onSave, onClose, lockedSection }) {
   const [name, setName] = useState(initial?.name || "");
-  const [section, setSection] = useState(initial?.section || "");
+  const [section, setSection] = useState(lockedSection || initial?.section || "");
   const [rfidUid, setRfidUid] = useState(initial?.rfidUid || "");
   const [parentChannel, setParentChannel] = useState(initial?.parentChannel || "");
   const [parentChatId, setParentChatId] = useState(initial?.parentChatId || "");
@@ -77,8 +77,19 @@ export default function StudentFormModal({ initial, onSave, onClose }) {
               value={section}
               onChange={(e) => setSection(e.target.value)}
               placeholder="e.g. Grade 5 - Sampaguita"
-              className="w-full px-3 py-2 rounded-lg border border-rule focus:border-accent text-sm"
+              readOnly={!!lockedSection && !initial}
+              className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                lockedSection && !initial
+                  ? "bg-paper border-rule/60 text-ink-dim cursor-default"
+                  : "border-rule focus:border-accent"
+              }`}
+              tabIndex={lockedSection && !initial ? -1 : 0}
             />
+            {lockedSection && !initial && (
+              <p className="text-xs text-ink-dim mt-1.5">
+                Section is locked to {lockedSection}.
+              </p>
+            )}
           </div>
 
           <div>

@@ -1,18 +1,40 @@
-import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, UserPlus, Nfc } from "lucide-react";
-import { subscribeStudents, addStudent, updateStudent, deleteStudent } from "../lib/students";
+import { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { Plus, Users, UserPlus, ChevronRight } from "lucide-react";
+import { subscribeStudents, addStudent, updateStudent } from "../lib/students";
 import StudentFormModal from "../components/StudentFormModal";
 import EmptyState from "../components/EmptyState";
+
+function slugify(str) {
+  return str.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-");
+}
 
 export default function Students() {
   const [students, setStudents] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [lockedSection, setLockedSection] = useState(null);
 
   useEffect(() => {
     const unsub = subscribeStudents(setStudents, () => setStudents([]));
     return unsub;
   }, []);
+
+  const sections = useMemo(() => {
+    if (!students) return null;
+    const map = {};
+    for (const s of students) {
+      const key = s.section?.trim() || "Unassigned";
+      if (!map[key]) map[key] = [];
+      map[key].push(s);
+    }
+    const keys = Object.keys(map).sort((a, b) => {
+      if (a === "Unassigned") return 1;
+      if (b === "Unassigned") return -1;
+      return a.localeCompare(b);
+    });
+    return keys.map((name) => ({ name, count: map[name].length }));
+  }, [students]);
 
   async function handleSave(data) {
     if (editing) {
@@ -22,11 +44,22 @@ export default function Students() {
     }
     setModalOpen(false);
     setEditing(null);
+    setLockedSection(null);
   }
 
-  async function handleDelete(student) {
-    if (!confirm(`Remove ${student.name} from the roster?`)) return;
-    await deleteStudent(student.id);
+  function openAddForSection(sectionName) {
+    setEditing(null);
+    setLockedSection(sectionName);
+    setModalOpen(true);
+  }
+
+  function openNewSection() {
+    const name = prompt("Enter a name for the new section:");
+    if (name?.trim()) {
+      setEditing(null);
+      setLockedSection(name.trim());
+      setModalOpen(true);
+    }
   }
 
   const loading = students === null;
@@ -41,14 +74,11 @@ export default function Students() {
           </p>
         </div>
         <button
-          onClick={() => {
-            setEditing(null);
-            setModalOpen(true);
-          }}
+          onClick={openNewSection}
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-board text-chalk text-sm font-medium hover:bg-board-deep"
         >
           <Plus size={16} />
-          Add student
+          New Section
         </button>
       </header>
 
@@ -58,10 +88,14 @@ export default function Students() {
         <EmptyState
           icon={UserPlus}
           title="No students yet"
-          hint="Add your first student, then tap a blank card on the reader to link it instantly."
+          hint="Add your first student to create a section group."
           action={
             <button
-              onClick={() => setModalOpen(true)}
+              onClick={() => {
+                setEditing(null);
+                setLockedSection(null);
+                setModalOpen(true);
+              }}
               className="px-4 py-2 rounded-lg bg-board text-chalk text-sm font-medium hover:bg-board-deep"
             >
               Add your first student
@@ -71,69 +105,53 @@ export default function Students() {
       )}
 
       {!loading && students.length > 0 && (
-        <div className="rounded-xl border border-rule overflow-hidden bg-white">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-paper text-left text-xs uppercase tracking-wide text-ink-dim border-b border-rule">
-                <th className="px-5 py-3 font-medium">Name</th>
-                <th className="px-5 py-3 font-medium">Section</th>
-                <th className="px-5 py-3 font-medium">RFID card</th>
-                <th className="px-5 py-3 font-medium">Parent link</th>
-                <th className="px-5 py-3 font-medium w-20"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((s) => (
-                <tr key={s.id} className="border-b border-rule last:border-0">
-                  <td className="px-5 py-3 font-medium">{s.name}</td>
-                  <td className="px-5 py-3 text-ink-dim">{s.section || "—"}</td>
-                  <td className="px-5 py-3 font-mono text-xs">
-                    {s.rfidUid ? (
-                      <span className="inline-flex items-center gap-1.5 text-ink-dim">
-                        <Nfc size={13} /> {s.rfidUid}
-                      </span>
-                    ) : (
-                      <span className="text-pending">Not registered</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-ink-dim capitalize">
-                    {s.parentChannel ? s.parentChannel : <span className="text-pending">Not linked</span>}
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-1 justify-end">
-                      <button
-                        onClick={() => {
-                          setEditing(s);
-                          setModalOpen(true);
-                        }}
-                        className="p-1.5 rounded-md text-ink-dim hover:text-ink hover:bg-paper"
-                        aria-label={`Edit ${s.name}`}
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(s)}
-                        className="p-1.5 rounded-md text-ink-dim hover:text-absent hover:bg-absent-bg"
-                        aria-label={`Remove ${s.name}`}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sections.map(({ name, count }) => (
+            <div
+              key={name}
+              className="rounded-xl border border-rule bg-white overflow-hidden"
+            >
+              <Link
+                to={`/students/${slugify(name)}`}
+                className="flex items-center gap-3 p-5 hover:bg-paper/50 transition-colors group"
+              >
+                <div className="rounded-lg bg-board p-2.5 text-chalk">
+                  <Users size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-display text-base font-semibold truncate">{name}</h2>
+                  <p className="text-xs text-ink-dim mt-0.5">
+                    {count} student{count !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <ChevronRight
+                  size={18}
+                  className="text-ink-dim/40 group-hover:text-ink-dim transition-colors shrink-0"
+                />
+              </Link>
+              <div className="border-t border-rule px-5 py-3">
+                <button
+                  onClick={() => openAddForSection(name)}
+                  className="flex items-center gap-1.5 text-sm font-medium text-ink-dim hover:text-ink transition-colors"
+                >
+                  <Plus size={15} />
+                  Add student
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
       {modalOpen && (
         <StudentFormModal
           initial={editing}
+          lockedSection={lockedSection}
           onSave={handleSave}
           onClose={() => {
             setModalOpen(false);
             setEditing(null);
+            setLockedSection(null);
           }}
         />
       )}
