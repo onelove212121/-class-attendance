@@ -1,11 +1,13 @@
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
 const attendanceRef = collection(db, "attendance");
 
 /** Live-subscribes to every attendance record for one calendar date (YYYY-MM-DD). */
 export function subscribeAttendanceForDate(dateStr, onChange, onError) {
-  const q = query(attendanceRef, where("date", "==", dateStr));
+  const start = Timestamp.fromDate(new Date(`${dateStr}T00:00:00+08:00`));
+  const end = Timestamp.fromDate(new Date(`${dateStr}T23:59:59+08:00`));
+  const q = query(attendanceRef, where("date", ">=", start), where("date", "<=", end));
   return onSnapshot(
     q,
     (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
